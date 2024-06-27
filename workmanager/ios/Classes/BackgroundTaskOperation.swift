@@ -13,6 +13,8 @@ class BackgroundTaskOperation: Operation {
     private let flutterPluginRegistrantCallback: FlutterPluginRegistrantCallback?
     private let inputData: String
     private let backgroundMode: BackgroundMode
+    
+    private var backgroundWorker: BackgroundWorker?
 
     init(_ identifier: String,
          inputData: String,
@@ -26,15 +28,29 @@ class BackgroundTaskOperation: Operation {
 
     override func main() {
         let semaphore = DispatchSemaphore(value: 0)
-        let worker = BackgroundWorker(mode: self.backgroundMode,
+        self.backgroundWorker = BackgroundWorker(mode: self.backgroundMode,
                                       inputData: self.inputData,
                                       flutterPluginRegistrantCallback: self.flutterPluginRegistrantCallback)
         DispatchQueue.main.async {
-            worker.performBackgroundRequest { _ in
+            self.backgroundWorker!.performBackgroundRequest { _ in
                 semaphore.signal()
             }
         }
 
+        semaphore.wait()
+    }
+    
+    override func cancel() {
+        super.cancel()
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        DispatchQueue.main.async {
+            self.backgroundWorker?.cancel {
+                semaphore.signal()
+            }
+        }
+        
         semaphore.wait()
     }
 }

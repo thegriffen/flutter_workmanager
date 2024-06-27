@@ -21,8 +21,7 @@ import 'options.dart';
 ///   another attempt using [Workmanager.registerOneOffTask]. This depends on
 ///   BGTaskScheduler being set up correctly. Please follow the README for
 ///   instructions.
-typedef BackgroundTaskHandler = Future<bool> Function(
-    String taskName, Map<String, dynamic>? inputData);
+typedef BackgroundTaskHandler = Future<bool> Function(String taskName, Map<String, dynamic>? inputData);
 
 /// Make sure you followed the platform setup steps first before trying to register any task.
 ///
@@ -75,16 +74,12 @@ typedef BackgroundTaskHandler = Future<bool> Function(
 class Workmanager {
   factory Workmanager() => _instance;
 
-  Workmanager._internal(
-      MethodChannel backgroundChannel, MethodChannel foregroundChannel)
+  Workmanager._internal(MethodChannel backgroundChannel, MethodChannel foregroundChannel)
       : _backgroundChannel = backgroundChannel,
         _foregroundChannel = foregroundChannel;
 
   static final Workmanager _instance = Workmanager._internal(
-      const MethodChannel(
-          "be.tramckrijte.workmanager/background_channel_work_manager"),
-      const MethodChannel(
-          "be.tramckrijte.workmanager/foreground_channel_work_manager"));
+      const MethodChannel("be.tramckrijte.workmanager/background_channel_work_manager"), const MethodChannel("be.tramckrijte.workmanager/foreground_channel_work_manager"));
 
   /// Use this constant inside your callbackDispatcher to identify when an iOS Background Fetch occurred.
   ///
@@ -121,27 +116,31 @@ class Workmanager {
   /// }
   /// ```
   @Deprecated('Use custom iOS task names. This property will be removed.')
-  static const String iOSBackgroundProcessingTask =
-      "workmanager.background.task";
+  static const String iOSBackgroundProcessingTask = "workmanager.background.task";
 
   static bool _isInDebugMode = false;
 
-  MethodChannel _backgroundChannel = const MethodChannel(
-      "be.tramckrijte.workmanager/background_channel_work_manager");
-  MethodChannel _foregroundChannel = const MethodChannel(
-      "be.tramckrijte.workmanager/foreground_channel_work_manager");
+  MethodChannel _backgroundChannel = const MethodChannel("be.tramckrijte.workmanager/background_channel_work_manager");
+  MethodChannel _foregroundChannel = const MethodChannel("be.tramckrijte.workmanager/foreground_channel_work_manager");
 
   /// A helper function so you only need to implement a [BackgroundTaskHandler]
-  void executeTask(final BackgroundTaskHandler backgroundTask) {
+  void executeTask(final BackgroundTaskHandler backgroundTask, {final Future<void> Function()? onCanceled = null}) {
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
 
     _backgroundChannel.setMethodCallHandler((call) async {
-      final inputData = call.arguments["be.tramckrijte.workmanager.INPUT_DATA"];
-      return backgroundTask(
-        call.arguments["be.tramckrijte.workmanager.DART_TASK"],
-        inputData == null ? null : jsonDecode(inputData),
-      );
+      switch (call.method) {
+        case 'onResultSend':
+          final inputData = call.arguments["be.tramckrijte.workmanager.INPUT_DATA"];
+          return await backgroundTask(
+            call.arguments["be.tramckrijte.workmanager.DART_TASK"],
+            inputData == null ? null : jsonDecode(inputData),
+          );
+        case 'onCancelled':
+          if (onCanceled != null) {
+            await onCanceled();
+          }
+      }
     });
     _backgroundChannel.invokeMethod("backgroundChannelInitialized");
   }
@@ -156,8 +155,7 @@ class Workmanager {
   }) async {
     Workmanager._isInDebugMode = isInDebugMode;
     final callback = PluginUtilities.getCallbackHandle(callbackDispatcher);
-    assert(callback != null,
-        "The callbackDispatcher needs to be either a static function or a top level function to be accessible as a Flutter entry point.");
+    assert(callback != null, "The callbackDispatcher needs to be either a static function or a top level function to be accessible as a Flutter entry point.");
     if (callback != null) {
       final int handle = callback.toRawHandle();
       await _foregroundChannel.invokeMethod<void>(
@@ -320,29 +318,25 @@ class Workmanager {
       );
 
   /// Cancels a task by its [uniqueName]
-  Future<void> cancelByUniqueName(final String uniqueName) async =>
-      await _foregroundChannel.invokeMethod(
+  Future<void> cancelByUniqueName(final String uniqueName) async => await _foregroundChannel.invokeMethod(
         "cancelTaskByUniqueName",
         {"uniqueName": uniqueName},
       );
 
   /// Cancels a task by its [tag]
-  Future<void> cancelByTag(final String tag) async =>
-      await _foregroundChannel.invokeMethod(
+  Future<void> cancelByTag(final String tag) async => await _foregroundChannel.invokeMethod(
         "cancelTaskByTag",
         {"tag": tag},
       );
 
   /// Cancels all tasks
-  Future<void> cancelAll() async =>
-      await _foregroundChannel.invokeMethod("cancelAllTasks");
+  Future<void> cancelAll() async => await _foregroundChannel.invokeMethod("cancelAllTasks");
 
   /// Prints details of un-executed scheduled tasks to console. To be used during
   /// development/debugging.
   ///
   /// Currently only supported on iOS and only on iOS 13+.
-  Future<void> printScheduledTasks() async =>
-      await _foregroundChannel.invokeMethod("printScheduledTasks");
+  Future<void> printScheduledTasks() async => await _foregroundChannel.invokeMethod("printScheduledTasks");
 }
 
 /// A helper object to convert the selected options to JSON format. Mainly for testability.
@@ -367,16 +361,8 @@ class JsonMapperHelper {
       for (final entry in inputData.entries) {
         final key = entry.key;
         final value = entry.value;
-        if (!(value is int ||
-            value is bool ||
-            value is double ||
-            value is String ||
-            value is List<int> ||
-            value is List<bool> ||
-            value is List<double> ||
-            value is List<String>)) {
-          throw Exception(
-              "argument $key has wrong type. WorkManager supports only int, bool, double, String and their list");
+        if (!(value is int || value is bool || value is double || value is String || value is List<int> || value is List<bool> || value is List<double> || value is List<String>)) {
+          throw Exception("argument $key has wrong type. WorkManager supports only int, bool, double, String and their list");
         }
       }
     }
@@ -415,6 +401,5 @@ class JsonMapperHelper {
     };
   }
 
-  static String? _enumToString(final dynamic enumeration) =>
-      enumeration?.toString().split('.').last;
+  static String? _enumToString(final dynamic enumeration) => enumeration?.toString().split('.').last;
 }

@@ -26,18 +26,13 @@ class MockWorkmanager extends _i1.Mock implements _i2.Workmanager {
   }
 
   @override
-  void executeTask(_i2.BackgroundTaskHandler? backgroundTask) =>
-      super.noSuchMethod(Invocation.method(#executeTask, [backgroundTask]),
-          returnValueForMissingStub: null);
+  void executeTask(_i2.BackgroundTaskHandler? backgroundTask, {Future<void> Function()? onCanceled = null}) =>
+      super.noSuchMethod(Invocation.method(#executeTask, [backgroundTask], {#onCanceled: onCanceled}), returnValueForMissingStub: null);
 
   @override
-  _i3.Future<void> initialize(Function? callbackDispatcher,
-          {bool? isInDebugMode = false}) =>
-      (super.noSuchMethod(
-          Invocation.method(#initialize, [callbackDispatcher],
-              {#isInDebugMode: isInDebugMode}),
-          returnValue: Future<void>.value(),
-          returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
+  _i3.Future<void> initialize(Function? callbackDispatcher, {bool? isInDebugMode = false}) =>
+      (super.noSuchMethod(Invocation.method(#initialize, [callbackDispatcher], {#isInDebugMode: isInDebugMode}),
+          returnValue: Future<void>.value(), returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
 
   @override
   _i3.Future<void> registerOneOffTask(String? uniqueName, String? taskName,
@@ -98,19 +93,14 @@ class MockWorkmanager extends _i1.Mock implements _i2.Workmanager {
 
   @override
   _i3.Future<void> cancelByUniqueName(String? uniqueName) =>
-      (super.noSuchMethod(Invocation.method(#cancelByUniqueName, [uniqueName]),
-          returnValue: Future<void>.value(),
-          returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
+      (super.noSuchMethod(Invocation.method(#cancelByUniqueName, [uniqueName]), returnValue: Future<void>.value(), returnValueForMissingStub: Future<void>.value())
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> cancelByTag(String? tag) =>
-      (super.noSuchMethod(Invocation.method(#cancelByTag, [tag]),
-          returnValue: Future<void>.value(),
-          returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
+      (super.noSuchMethod(Invocation.method(#cancelByTag, [tag]), returnValue: Future<void>.value(), returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
 
   @override
   _i3.Future<void> cancelAll() =>
-      (super.noSuchMethod(Invocation.method(#cancelAll, []),
-          returnValue: Future<void>.value(),
-          returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
+      (super.noSuchMethod(Invocation.method(#cancelAll, []), returnValue: Future<void>.value(), returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
 }

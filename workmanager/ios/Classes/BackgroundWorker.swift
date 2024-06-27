@@ -45,6 +45,8 @@ class BackgroundWorker {
     let backgroundMode: BackgroundMode
     let flutterPluginRegistrantCallback: FlutterPluginRegistrantCallback?
     let inputData: String
+    
+    private var backgroundMethodChannel: FlutterMethodChannel?
 
     init(mode: BackgroundMode, inputData: String, flutterPluginRegistrantCallback: FlutterPluginRegistrantCallback?) {
         backgroundMode = mode
@@ -56,11 +58,14 @@ class BackgroundWorker {
         static let name = "\(SwiftWorkmanagerPlugin.identifier)/background_channel_work_manager"
         static let initialized = "backgroundChannelInitialized"
         static let onResultSendCommand = "onResultSend"
+        static let onCancelled = "onCancelled"
     }
 
     /// The result is discardable due to how [BackgroundTaskOperation] works.
     @discardableResult
     func performBackgroundRequest(_ completionHandler: @escaping (UIBackgroundFetchResult) -> Void) -> Bool {
+        logDebug("Performing background request")
+        
         guard let callbackHandle = UserDefaultsHelper.getStoredCallbackHandle(),
             let flutterCallbackInformation = FlutterCallbackCache.lookupCallbackInformation(callbackHandle)
             else {
@@ -78,6 +83,8 @@ class BackgroundWorker {
             callBackHandle: callbackHandle,
             callbackInfo: flutterCallbackInformation
         )
+        
+        logDebug("Starting flutter engine")
 
         var flutterEngine: FlutterEngine? = FlutterEngine(
             name: backgroundMode.flutterThreadlabelPrefix,
@@ -91,7 +98,9 @@ class BackgroundWorker {
         )
         flutterPluginRegistrantCallback?(flutterEngine!)
 
-        var backgroundMethodChannel: FlutterMethodChannel? = FlutterMethodChannel(
+        logDebug("Creating method channel")
+        
+        self.backgroundMethodChannel = FlutterMethodChannel(
             name: BackgroundChannel.name,
             binaryMessenger: flutterEngine!.binaryMessenger
         )
@@ -102,19 +111,24 @@ class BackgroundWorker {
             flutterEngine = nil
         }
 
-        backgroundMethodChannel?.setMethodCallHandler { call, result in
+        self.backgroundMethodChannel?.setMethodCallHandler { call, result in
             switch call.method {
             case BackgroundChannel.initialized:
+                logDebug("initialized method called")
+                
                 result(true)    // Agree to Flutter's method invocation
                 var arguments = self.backgroundMode.onResultSendArguments
                 if self.inputData != "" {
                     arguments = arguments.merging(["be.tramckrijte.workmanager.INPUT_DATA": self.inputData]) { current, _ in current }
                 }
+                
+                logDebug("invoking command")
 
-                backgroundMethodChannel?.invokeMethod(
+                self.backgroundMethodChannel?.invokeMethod(
                     BackgroundChannel.onResultSendCommand,
                     arguments: arguments,
                     result: { flutterResult in
+                        logDebug("got result")
                         cleanupFlutterResources()
                         let taskSessionCompleter = Date()
                         let result: UIBackgroundFetchResult = (flutterResult as? Bool ?? false) ? .newData : .failed
@@ -136,5 +150,15 @@ class BackgroundWorker {
         }
 
         return true
+    }
+    
+    func cancel(_ completionHandler: @escaping () -> Void) {
+        self.backgroundMethodChannel?.invokeMethod(
+            BackgroundChannel.onCancelled,
+            arguments: nil,
+            result: { _ in
+                    completionHandler()
+            }
+        )
     }
 }
